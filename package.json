@@ -1,0 +1,16 @@
+{
+  "name": "fuego_v8_real",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "start": "next start",
+    "dev": "next dev"
+  },
+  "dependencies": {
+    "next": "^14.2.3",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "node-fetch": "^3.3.2"
+  },
+  "type": "module"
+}
