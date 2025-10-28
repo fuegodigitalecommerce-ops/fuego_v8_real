@@ -18,9 +18,12 @@ export default async function handler(req, res) {
     // 1️⃣ MercadoLibre
     let meliResults = [];
     try {
-      const meliRes = await fetch(`${meliUrl}${site}/search?q=${encodeURIComponent(keyword)}&limit=20`, {
-        headers: { "User-Agent": "Mozilla/5.0 (compatible; FUEGO-LATAM/1.1)" },
-      });
+      const meliRes = await fetch(`${meliUrl}${site}/search?q=${encodeURIComponent(keyword)}&limit=8`, {
+  headers: {
+    "User-Agent": "Mozilla/5.0 (compatible; FUEGO-LATAM/1.0; +https://fuego-v8-real.vercel.app)",
+    "Accept": "application/json"
+  }
+});
 
       const meliData = await meliRes.json();
       console.log("📦 MercadoLibre:", meliData?.results?.length || 0, "resultados");
