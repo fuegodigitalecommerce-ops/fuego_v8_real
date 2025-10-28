@@ -11,10 +11,10 @@ export default async function handler(req, res) {
     const googleCx = process.env.GOOGLE_CX_ID;
     const meliUrl = process.env.MELI_API_URL || "https://api.mercadolibre.com/sites/";
 
-    // 1️⃣ Google Images (Custom Search)
+    // Google Images
     let googleResults = [];
     if (googleKey && googleCx) {
-      const googleUrl = `https://www.googleapis.com/customsearch/v1?q=${encodeURIComponent(keyword)}&cx=${googleCx}&key=${googleKey}&searchType=image&num=6`;
+      const googleUrl = `https://www.googleapis.com/customsearch/v1?q=${encodeURIComponent(keyword)}&cx=${googleCx}&key=${googleKey}&searchType=image&num=5`;
       const googleRes = await fetch(googleUrl);
       const googleData = await googleRes.json();
 
@@ -26,10 +26,10 @@ export default async function handler(req, res) {
       }));
     }
 
-    // 2️⃣ MercadoLibre por país
+    // MercadoLibre
     const siteMap = { CO: "MCO", MX: "MLM", AR: "MLA", CL: "MLC", PE: "MPE" };
     const site = siteMap[(country || "CO").toUpperCase()] || "MCO";
-    const meliRes = await fetch(`${meliUrl}${site}/search?q=${encodeURIComponent(keyword)}&limit=8`);
+    const meliRes = await fetch(`${meliUrl}${site}/search?q=${encodeURIComponent(keyword)}&limit=6`);
     const meliData = await meliRes.json();
 
     const meliResults = (meliData.results || []).map(item => ({
@@ -54,7 +54,7 @@ export default async function handler(req, res) {
     return res.status(500).json({
       ok: false,
       error: "Error al obtener datos",
-      detalle: String(error.message || error)
+      detalle: error.message
     });
   }
 }
