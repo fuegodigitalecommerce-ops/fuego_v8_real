@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "builds": [
+    { "src": "pages/index.jsx", "use": "@vercel/node" },
+    { "src": "api/trends.js", "use": "@vercel/node" }
+  ],
+  "routes": [
+    { "src": "/api/trends", "dest": "/api/trends.js" },
+    { "src": "/(.*)", "dest": "/pages/index.jsx" }
+  ]
+}
