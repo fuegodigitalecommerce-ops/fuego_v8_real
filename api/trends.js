@@ -4,22 +4,24 @@ import fetch from "node-fetch";
 export default async function handler(req, res) {
   try {
     const { keyword, country } = req.query;
-    if (!keyword) {
-      return res.status(400).json({ ok: false, error: "Falta palabra clave 🔥" });
-    }
+    if (!keyword) return res.status(400).json({ ok: false, error: "Falta palabra clave 🔥" });
 
     const googleKey = process.env.GOOGLE_API_KEY;
     const googleCx = process.env.GOOGLE_CX_ID;
     const meliUrl = process.env.MELI_API_URL || "https://api.mercadolibre.com/sites/";
 
+    // 🔹 Mapeo de países a códigos de MercadoLibre
     const siteMap = { CO: "MCO", MX: "MLM", AR: "MLA", CL: "MLC", PE: "MPE" };
     const site = siteMap[(country || "CO").toUpperCase()] || "MCO";
 
-    // 🔹 Buscar productos en MercadoLibre
-    const meliRes = await fetch(`${meliUrl}${site}/search?q=${encodeURIComponent(keyword)}&limit=8`);
+    // 🔹 Búsqueda en MercadoLibre
+    const meliEndpoint = `${meliUrl}${site}/search?q=${encodeURIComponent(keyword)}`;
+    const meliRes = await fetch(meliEndpoint);
     const meliData = await meliRes.json();
 
-    if (!meliData.results) throw new Error("No se pudo obtener datos de MercadoLibre");
+    if (!meliData || !meliData.results) {
+      throw new Error(`Respuesta inválida de MercadoLibre (${meliEndpoint})`);
+    }
 
     const meliResults = meliData.results.map(item => ({
       title: item.title,
@@ -29,7 +31,7 @@ export default async function handler(req, res) {
       source: "MercadoLibre"
     }));
 
-    // 🔹 Buscar imágenes en Google
+    // 🔹 Búsqueda en Google Images
     let googleResults = [];
     if (googleKey && googleCx) {
       const googleUrl = `https://www.googleapis.com/customsearch/v1?q=${encodeURIComponent(keyword)}&cx=${googleCx}&key=${googleKey}&searchType=image&num=6`;
@@ -44,7 +46,6 @@ export default async function handler(req, res) {
       }));
     }
 
-    // 🔹 Combinar resultados
     const results = [...meliResults, ...googleResults];
 
     return res.status(200).json({
