@@ -1,7 +1,6 @@
 {
   "name": "fuego_v8_real",
   "version": "1.0.0",
-  "type": "module",
   "dependencies": {
     "node-fetch": "^3.3.2",
     "react": "^18.2.0",
