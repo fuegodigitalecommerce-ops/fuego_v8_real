@@ -1,6 +1,7 @@
-import fetch from "node-fetch";
+// api/trends.js
+const fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fetch(...args));
 
-export default async function handler(req, res) {
+module.exports = async (req, res) => {
   try {
     const { keyword, country } = req.query;
     if (!keyword) {
@@ -14,15 +15,18 @@ export default async function handler(req, res) {
     // Google Images
     let googleResults = [];
     if (googleKey && googleCx) {
-      const googleUrl = `https://www.googleapis.com/customsearch/v1?q=${encodeURIComponent(keyword)}&cx=${googleCx}&key=${googleKey}&searchType=image&num=5`;
+      const googleUrl = `https://www.googleapis.com/customsearch/v1?q=${encodeURIComponent(
+        keyword
+      )}&cx=${googleCx}&key=${googleKey}&searchType=image&num=5`;
+
       const googleRes = await fetch(googleUrl);
       const googleData = await googleRes.json();
 
-      googleResults = (googleData.items || []).map(item => ({
+      googleResults = (googleData.items || []).map((item) => ({
         title: item.title,
         image: item.link,
         link: item.image?.contextLink || item.link,
-        source: "Google Images"
+        source: "Google Images",
       }));
     }
 
@@ -32,29 +36,29 @@ export default async function handler(req, res) {
     const meliRes = await fetch(`${meliUrl}${site}/search?q=${encodeURIComponent(keyword)}&limit=6`);
     const meliData = await meliRes.json();
 
-    const meliResults = (meliData.results || []).map(item => ({
+    const meliResults = (meliData.results || []).map((item) => ({
       title: item.title,
       price: item.price,
       link: item.permalink,
       image: item.thumbnail,
-      source: "MercadoLibre"
+      source: "MercadoLibre",
     }));
 
     const results = [...meliResults, ...googleResults];
 
-    return res.status(200).json({
+    res.status(200).json({
       ok: true,
       keyword,
       country,
       resultsCount: results.length,
-      results
+      results,
     });
   } catch (error) {
     console.error("Error trends:", error);
-    return res.status(500).json({
+    res.status(500).json({
       ok: false,
       error: "Error al obtener datos",
-      detalle: error.message
+      detalle: error.message,
     });
   }
-}
+};
