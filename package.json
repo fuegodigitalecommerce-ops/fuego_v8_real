@@ -1,22 +1,17 @@
 {
-  "name": "fuego-v8-real",
+  "name": "fuego_v8_real",
   "version": "1.0.0",
-  "description": "🔥 FUEGO Trends LATAM — Buscador de tendencias, productos e imágenes reales desde Google y MercadoLibre",
-  "main": "index.js",
+  "main": "pages/index.jsx",
+  "type": "module",
   "scripts": {
+    "start": "next start",
     "dev": "next dev",
-    "build": "next build",
-    "start": "next start"
+    "build": "next build"
   },
   "dependencies": {
     "next": "14.2.5",
-    "react": "18.3.1",
-    "react-dom": "18.3.1",
+    "react": "18.2.0",
+    "react-dom": "18.2.0",
     "node-fetch": "3.3.2"
-  },
-  "engines": {
-    "node": ">=18.x"
-  },
-  "license": "MIT",
-  "author": "FUEGO Digital LATAM"
+  }
 }
