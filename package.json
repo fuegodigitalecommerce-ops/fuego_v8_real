@@ -1,19 +1,25 @@
 {
   "name": "fuego_v8_real",
   "version": "1.0.0",
+  "description": "🔥 Fuego Real - Buscador de tendencias, productos e imágenes en tiempo real.",
   "type": "module",
-  "dependencies": {
-    "node-fetch": "^3.3.2"
-  }
+  "main": "index.js",
   "scripts": {
-    "start": "next start",
-    "dev": "next dev",
-    "build": "next build"
+    "dev": "vercel dev",
+    "build": "vercel build",
+    "start": "vercel start"
   },
   "dependencies": {
-    "next": "14.2.5",
-    "react": "18.2.0",
-    "react-dom": "18.2.0",
-    "node-fetch": "3.3.2"
-  }
+    "node-fetch": "^3.3.2"
+  },
+  "keywords": [
+    "fuego",
+    "mercadolibre",
+    "google",
+    "trends",
+    "ai",
+    "vercel"
+  ],
+  "author": "Juan Coneo - Fuego Digital",
+  "license": "MIT"
 }
