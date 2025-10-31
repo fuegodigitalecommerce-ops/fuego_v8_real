@@ -28,26 +28,28 @@ export default async function handler(req, res) {
       }
     }
 
-    // 2️⃣ MercadoLibre (limitado por permisos)
+    // 2️⃣ MercadoLibre (ahora con headers)
     const siteMap = { CO: "MCO", MX: "MLM", AR: "MLA", CL: "MLC", PE: "MPE" };
     const site = siteMap[(country || "CO").toUpperCase()] || "MCO";
 
-    try {
-      const meliRes = await fetch(`${meliUrl}${site}/search?q=${encodeURIComponent(keyword)}&limit=5`);
-      const meliData = await meliRes.json();
-      if (meliData?.results?.length) {
-        results = [
-          ...meliData.results.map(item => ({
-            title: item.title,
-            link: item.permalink,
-            image: item.thumbnail,
-            source: "MercadoLibre"
-          })),
-          ...results
-        ];
+    const meliRes = await fetch(`${meliUrl}${site}/search?q=${encodeURIComponent(keyword)}&limit=6`, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (compatible; FuegoApp/1.0; +https://fuego-v8-real.vercel.app/)",
+        "Accept": "application/json"
       }
-    } catch (err) {
-      console.warn("MercadoLibre bloqueó la solicitud:", err.message);
+    });
+    const meliData = await meliRes.json();
+
+    if (meliData?.results?.length) {
+      results = [
+        ...meliData.results.map(item => ({
+          title: item.title,
+          link: item.permalink,
+          image: item.thumbnail,
+          source: "MercadoLibre"
+        })),
+        ...results
+      ];
     }
 
     return res.status(200).json({
