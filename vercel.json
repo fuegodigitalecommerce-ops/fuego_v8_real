@@ -1,16 +1,11 @@
 {
   "version": 2,
-  "functions": {
-    "api/*.js": {
-      "runtime": "nodejs18.x"
-    }
-  },
   "builds": [
-    { "src": "pages/index.jsx", "use": "@vercel/static" },
-    { "src": "api/*.js", "use": "@vercel/node" }
+    { "src": "pages/index.jsx", "use": "@vercel/next" },
+    { "src": "api/trends.js", "use": "@vercel/node" }
   ],
   "routes": [
-    { "src": "/api/(.*)", "dest": "/api/$1" },
+    { "src": "/api/trends", "dest": "/api/trends.js" },
     { "src": "/(.*)", "dest": "/pages/index.jsx" }
   ]
 }
