@@ -1,79 +1,70 @@
+// /api/trends.js
 export default async function handler(req, res) {
   try {
-    const { keyword = "navidad", country = "CO" } = req.query;
+    const { keyword = "", country = "CO" } = req.query;
+    if (!keyword.trim()) {
+      return res.status(400).json({ ok: false, error: "Falta palabra clave 🔥" });
+    }
 
     const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY;
-    const GOOGLE_CX_ID = process.env.GOOGLE_CX_ID;
-    const MELI_API_URL = process.env.MELI_API_URL || "https://api.mercadolibre.com/sites/";
+    const GOOGLE_CX_ID = process.env.ID_de_cliente_de_Google;
+    const MELI_API_URL = process.env.URL_de_la_API_de_MELI || "https://api.mercadolibre.com/sites/";
 
-    // 1️⃣ --- INTENTAR BÚSQUEDA EN GOOGLE CUSTOM SEARCH ---
-    const googleUrl = `https://www.googleapis.com/customsearch/v1?q=${encodeURIComponent(
-      keyword
-    )}&cx=${GOOGLE_CX_ID}&key=${GOOGLE_API_KEY}&num=6&searchType=image`;
-
-    const googleRes = await fetch(googleUrl, {
-      headers: { "User-Agent": "FUEGO_V8_REAL/1.0" },
-    });
-
-    let googleData = null;
+    // --- Búsqueda en Google Custom Search ---
+    let googleResults = [];
     try {
-      googleData = await googleRes.json();
+      const googleUrl = `https://www.googleapis.com/customsearch/v1?q=${encodeURIComponent(
+        keyword
+      )}&cx=${GOOGLE_CX_ID}&key=${GOOGLE_API_KEY}&searchType=image&num=6`;
+      const gRes = await fetch(googleUrl);
+      const gData = await gRes.json();
+
+      if (gData.items) {
+        googleResults = gData.items.map((item) => ({
+          title: item.title,
+          image: item.link,
+          link: item.image?.contextLink || item.link,
+          source: "Google Images",
+        }));
+      }
     } catch (err) {
-      console.error("⚠️ Error parseando JSON de Google:", err);
+      console.warn("Error con Google Search:", err.message);
     }
 
-    // 2️⃣ --- SI GOOGLE DA RESULTADOS ---
-    if (googleData && googleData.items && googleData.items.length > 0) {
-      const results = googleData.items.map((item) => ({
-        title: item.title || "Resultado sin título",
-        link: item.link,
-        image: item.pagemap?.cse_image?.[0]?.src || item.link,
-        source: "GOOGLE",
-      }));
+    // --- Búsqueda en MercadoLibre ---
+    const siteMap = { CO: "MCO", MX: "MLM", AR: "MLA", CL: "MLC", PE: "MPE" };
+    const site = siteMap[country.toUpperCase()] || "MCO";
+    let meliResults = [];
 
-      return res.status(200).json({
-        ok: true,
-        keyword,
-        country,
-        resultsCount: results.length,
-        results,
-      });
+    try {
+      const meliRes = await fetch(`${MELI_API_URL}${site}/search?q=${encodeURIComponent(keyword)}&limit=6`);
+      const meliData = await meliRes.json();
+
+      if (meliData.results) {
+        meliResults = meliData.results.map((item) => ({
+          title: item.title,
+          price: item.price,
+          link: item.permalink,
+          image: item.thumbnail,
+          source: "MercadoLibre",
+        }));
+      }
+    } catch (err) {
+      console.warn("Error con MercadoLibre:", err.message);
     }
 
-    // 3️⃣ --- SI GOOGLE NO DA RESULTADOS, USAR MERCADOLIBRE ---
-    const meliUrl = `${MELI_API_URL}${country}/search?q=${encodeURIComponent(keyword)}`;
-    const meliRes = await fetch(meliUrl);
-    const meliData = await meliRes.json();
+    const results = [...meliResults, ...googleResults];
 
-    if (meliData && meliData.results && meliData.results.length > 0) {
-      const results = meliData.results.slice(0, 6).map((item) => ({
-        title: item.title,
-        link: item.permalink,
-        image: item.thumbnail,
-        price: item.price,
-        source: "MERCADOLIBRE",
-      }));
-
-      return res.status(200).json({
-        ok: true,
-        keyword,
-        country,
-        resultsCount: results.length,
-        results,
-      });
-    }
-
-    // 4️⃣ --- SI NINGUNO DEVUELVE RESULTADOS ---
     return res.status(200).json({
       ok: true,
       keyword,
       country,
-      resultsCount: 0,
-      results: [],
-      message: "Sin resultados en Google ni MercadoLibre.",
+      resultsCount: results.length,
+      results,
+      message: results.length > 0 ? "🔥 Resultados encontrados" : "Sin resultados en Google ni MercadoLibre.",
     });
   } catch (error) {
-    console.error("🔥 Error interno:", error);
+    console.error("Error general:", error);
     return res.status(500).json({
       ok: false,
       error: "Error interno en el servidor 🔥",
