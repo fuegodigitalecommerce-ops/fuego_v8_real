@@ -1,75 +1,101 @@
-// --- /api/trends.js ---
-// Versión estable y funcional para FUEGO Trends LATAM 🔥
-// Compatible con Google Programmable Search (Custom Search JSON API) y MercadoLibre
-
+// /api/trends.js  (Node / Vercel Serverless - CommonJS/ESM compatible)
 export default async function handler(req, res) {
   try {
     const { keyword = "", country = "CO" } = req.query;
 
-    if (!keyword) {
-      return res.status(400).json({
-        ok: false,
-        error: "Falta el parámetro 'keyword'.",
-      });
+    if (!keyword || !String(keyword).trim()) {
+      return res.status(400).json({ ok: false, error: "Falta 'keyword'." });
     }
 
-    const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY;
-    const GOOGLE_CX = process.env.ID_de_cliente_de_Google;
-    const MELI_API = process.env.URL_de_la_API_de_MELI || "https://api.mercadolibre.com";
+    // Variables de entorno (asegúrate que tengan exactamente estos nombres en Vercel)
+    const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY || "";
+    const GOOGLE_CX = process.env.GOOGLE_CX_ID || ""; // tu CX (ID de buscador)
+    const MELI_API = process.env.MELI_API_URL || "https://api.mercadolibre.com";
 
-    // ------------------ 🔍 BÚSQUEDA EN GOOGLE ------------------
-    let googleResults = [];
-    try {
-      const googleURL = `https://www.googleapis.com/customsearch/v1?q=${encodeURIComponent(
-        keyword
-      )}&cx=${GOOGLE_CX}&key=${GOOGLE_API_KEY}&num=5`;
+    // Mapeo por país -> site de MercadoLibre
+    const siteMap = { CO: "MCO", MX: "MLM", AR: "MLA", CL: "MLC", PE: "MPE" };
+    const site = siteMap[(country || "CO").toUpperCase()] || "MCO";
 
-      const gRes = await fetch(googleURL);
-      const gData = await gRes.json();
-
-      if (gData.error) {
-        console.error("❌ Error de Google API:", gData.error);
-      } else if (gData.items && gData.items.length > 0) {
-        googleResults = gData.items.map((item) => ({
-          title: item.title,
-          link: item.link,
-          snippet: item.snippet,
-          image:
-            item.pagemap?.cse_image?.[0]?.src ||
-            "https://cdn-icons-png.flaticon.com/512/281/281764.png",
-          source: "Google",
-        }));
-      } else {
-        console.log("⚠️ Google no devolvió resultados para:", keyword);
+    // Helper: fetch con timeout y user-agent
+    const fetchWithTimeout = async (url, opts = {}) => {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 12000);
+      try {
+        const headers = {
+          "User-Agent": "FUEGO-API/1.0 (+https://fuego.example)",
+          "Accept": "application/json, text/plain, */*",
+          ...(opts.headers || {}),
+        };
+        const r = await fetch(url, { ...opts, signal: controller.signal, headers });
+        clearTimeout(timeout);
+        return r;
+      } catch (err) {
+        clearTimeout(timeout);
+        throw err;
       }
-    } catch (err) {
-      console.error("🚨 Error al consultar Google:", err);
+    };
+
+    // 1) Google Custom Search (imágenes + snippets) - opcional si claves no disponibles
+    let googleResults = [];
+    if (GOOGLE_API_KEY && GOOGLE_CX) {
+      try {
+        const googleUrl = `https://www.googleapis.com/customsearch/v1?q=${encodeURIComponent(
+          keyword
+        )}&cx=${GOOGLE_CX}&key=${GOOGLE_API_KEY}&num=6&searchType=image`;
+        const gRes = await fetchWithTimeout(googleUrl);
+        // si google responde html o error, lanzará en parse
+        const gData = await gRes.json();
+        if (Array.isArray(gData.items)) {
+          googleResults = gData.items.map((it) => ({
+            title: it.title || it.snippet || "",
+            link: it.link || it.image?.contextLink || "",
+            image: it.link || (it.image && it.image.thumbnailLink) || "",
+            source: "Google Images",
+          }));
+        } else {
+          console.warn("Google CustomSearch returned no items", gData);
+        }
+      } catch (err) {
+        console.error("Google API error:", String(err));
+        // no abortar todo: dejamos googleResults = []
+      }
+    } else {
+      console.warn("GOOGLE_API_KEY or GOOGLE_CX_ID missing");
     }
 
-    // ------------------ 🛒 BÚSQUEDA EN MERCADO LIBRE ------------------
+    // 2) MercadoLibre search (public endpoint) - añadir cabeceras
     let meliResults = [];
     try {
-      const meliURL = `${MELI_API}/sites/MCO/search?q=${encodeURIComponent(keyword)}`;
-      const mRes = await fetch(meliURL);
+      const meliUrl = `${MELI_API}/sites/${site}/search?q=${encodeURIComponent(keyword)}&limit=8`;
+      const mRes = await fetchWithTimeout(meliUrl, {
+        headers: { "Accept": "application/json" },
+      });
+      // manejo 403 explícito
+      if (mRes.status === 403 || mRes.status === 401) {
+        console.warn("MercadoLibre returned", mRes.status);
+        throw new Error(`ML forbidden ${mRes.status}`);
+      }
       const mData = await mRes.json();
-
-      if (mData.results && mData.results.length > 0) {
-        meliResults = mData.results.slice(0, 5).map((item) => ({
-          title: item.title,
-          link: item.permalink,
-          image: item.thumbnail,
-          price: item.price,
+      if (Array.isArray(mData.results)) {
+        meliResults = mData.results.slice(0, 8).map((it) => ({
+          title: it.title,
+          link: it.permalink,
+          image: it.thumbnail,
+          price: it.price,
           source: "MercadoLibre",
         }));
-      } else {
-        console.log("⚠️ MercadoLibre no devolvió resultados para:", keyword);
       }
     } catch (err) {
-      console.error("🚨 Error al consultar MercadoLibre:", err);
+      console.error("MercadoLibre error:", String(err));
+      // fallback: no abortar todo
     }
 
-    // ------------------ 📊 COMBINAR RESULTADOS ------------------
-    const combined = [...googleResults, ...meliResults];
+    // 3) Combinar con prioridad: MercadoLibre (productos) primero y luego google
+    const combined = [...meliResults, ...googleResults];
+
+    // Si no hay resultados reales, devolvemos ejemplo sensible (no inventado) o vacío
+    const message =
+      combined.length > 0 ? `🔥 ${combined.length} resultados encontrados` : "Sin resultados en Google ni MercadoLibre.";
 
     return res.status(200).json({
       ok: true,
@@ -77,17 +103,14 @@ export default async function handler(req, res) {
       country,
       resultsCount: combined.length,
       results: combined,
-      message:
-        combined.length > 0
-          ? `🔥 ${combined.length} resultados encontrados.`
-          : "Sin resultados en Google ni MercadoLibre.",
+      message,
     });
   } catch (error) {
-    console.error("💥 Error general del servidor:", error);
+    console.error("Unhandled error in /api/trends:", error);
     return res.status(500).json({
       ok: false,
       error: "Error interno en el servidor 🔥",
-      detalle: error.message,
+      detalle: String(error?.message || error),
     });
   }
 }
