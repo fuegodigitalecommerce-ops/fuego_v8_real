@@ -3,166 +3,197 @@ import { useState } from "react";
 export default function Home() {
   const [keyword, setKeyword] = useState("");
   const [country, setCountry] = useState("CO");
-  const [loading, setLoading] = useState(false);
   const [results, setResults] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const handleSearch = async () => {
-    if (!keyword.trim()) return alert("Por favor escribe una palabra clave 🔥");
+    if (!keyword.trim()) return alert("🔥 Escribe una palabra clave para encender el fuego.");
     setLoading(true);
+    setError("");
     setResults([]);
 
     try {
       const res = await fetch(`/api/trends?keyword=${encodeURIComponent(keyword)}&country=${country}`);
       const data = await res.json();
-      setResults(data.results || []);
-    } catch (error) {
-      alert("Error obteniendo datos 😢");
-    } finally {
-      setLoading(false);
+      if (data.ok) {
+        setResults(data.results);
+        if (data.results.length === 0) {
+          setError("🕯️ Sin resultados en Google ni MercadoLibre.");
+        }
+      } else {
+        setError(data.error || "⚠️ Error en la búsqueda.");
+      }
+    } catch (err) {
+      setError("🔥 Error conectando con el servidor.");
     }
+    setLoading(false);
   };
 
   return (
-    <div style={styles.container}>
-      <h1 style={styles.title}>🔥 FUEGO Trends LATAM</h1>
-      <p style={styles.subtitle}>Descubre lo que está ardiendo en tendencias por país</p>
+    <div style={styles.page}>
+      <div style={styles.container}>
+        <h1 style={styles.title}>🔥 FUEGO Trends LATAM</h1>
+        <p style={styles.subtitle}>
+          Descubre lo que está ardiendo en tendencias por país
+        </p>
 
-      <div style={styles.inputContainer}>
-        <input
-          type="text"
-          placeholder="Buscar tendencia (ej: navidad)"
-          value={keyword}
-          onChange={(e) => setKeyword(e.target.value)}
-          style={styles.input}
-        />
-        <select
-          value={country}
-          onChange={(e) => setCountry(e.target.value)}
-          style={styles.select}
-        >
-          <option value="">Seleccionar país</option>
-          <option value="CO">🇨🇴 Colombia</option>
-          <option value="MX">🇲🇽 México</option>
-          <option value="AR">🇦🇷 Argentina</option>
-          <option value="CL">🇨🇱 Chile</option>
-          <option value="PE">🇵🇪 Perú</option>
-        </select>
-        <button onClick={handleSearch} style={styles.button}>
-          🔥 Encender Fuego
-        </button>
+        <div style={styles.searchBox}>
+          <input
+            type="text"
+            placeholder="Ej: Navidad, moda, celulares..."
+            value={keyword}
+            onChange={(e) => setKeyword(e.target.value)}
+            style={styles.input}
+          />
+          <select
+            value={country}
+            onChange={(e) => setCountry(e.target.value)}
+            style={styles.select}
+          >
+            <option value="CO">🇨🇴 Colombia</option>
+            <option value="MX">🇲🇽 México</option>
+            <option value="AR">🇦🇷 Argentina</option>
+            <option value="CL">🇨🇱 Chile</option>
+            <option value="PE">🇵🇪 Perú</option>
+          </select>
+          <button onClick={handleSearch} style={styles.button}>
+            🔥 Encender Fuego
+          </button>
+        </div>
+
+        {loading && <p style={styles.loading}>🔥 Buscando tendencias...</p>}
+        {error && <p style={styles.error}>{error}</p>}
+
+        <div style={styles.grid}>
+          {results.map((item, index) => (
+            <div key={index} style={styles.card}>
+              {item.image && (
+                <img
+                  src={item.image}
+                  alt={item.title}
+                  style={styles.image}
+                />
+              )}
+              <h3 style={styles.itemTitle}>{item.title}</h3>
+              {item.price && <p style={styles.price}>💲 {item.price.toLocaleString()}</p>}
+              <a
+                href={item.link}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={styles.link}
+              >
+                🔗 Ver en {item.source}
+              </a>
+            </div>
+          ))}
+        </div>
+
+        <footer style={styles.footer}>
+          Hecho con 🔥 por el equipo <b>FUEGO LATAM</b> © 2025
+        </footer>
       </div>
-
-      {loading && <p style={styles.loading}>Buscando tendencias...</p>}
-
-      <div style={styles.grid}>
-        {results.map((item, index) => (
-          <div key={index} style={styles.card}>
-            <img src={item.image} alt={item.title} style={styles.image} />
-            <h3 style={styles.cardTitle}>{item.title}</h3>
-            <p style={styles.source}>Fuente: {item.source}</p>
-            <a href={item.link} target="_blank" rel="noopener noreferrer" style={styles.link}>
-              Ver más 🔗
-            </a>
-          </div>
-        ))}
-      </div>
-
-      {!loading && results.length === 0 && (
-        <p style={styles.noResults}>💭 Aún no hay resultados... ¡Enciende el fuego arriba!</p>
-      )}
     </div>
   );
 }
 
 const styles = {
-  container: {
-    fontFamily: "Arial, sans-serif",
-    textAlign: "center",
-    padding: "2rem",
-    background: "linear-gradient(180deg, #fff6f0, #ffe4d0)",
+  page: {
+    backgroundColor: "#ffece2",
     minHeight: "100vh",
+    fontFamily: "Poppins, sans-serif",
+    color: "#333",
+  },
+  container: {
+    maxWidth: 1000,
+    margin: "0 auto",
+    padding: 20,
+    textAlign: "center",
   },
   title: {
-    fontSize: "2.5rem",
-    color: "#e63946",
+    fontSize: 36,
+    color: "#ff3d00",
+    marginBottom: 10,
   },
   subtitle: {
-    fontSize: "1.1rem",
+    fontSize: 18,
     color: "#555",
-    marginBottom: "1.5rem",
+    marginBottom: 30,
   },
-  inputContainer: {
+  searchBox: {
     display: "flex",
     justifyContent: "center",
-    alignItems: "center",
-    gap: "0.5rem",
-    marginBottom: "2rem",
+    gap: 10,
     flexWrap: "wrap",
+    marginBottom: 30,
   },
   input: {
-    padding: "0.7rem",
-    fontSize: "1rem",
-    borderRadius: "8px",
-    border: "1px solid #ccc",
-    width: "220px",
+    padding: 10,
+    fontSize: 16,
+    width: 220,
+    border: "2px solid #ff7043",
+    borderRadius: 10,
   },
   select: {
-    padding: "0.7rem",
-    fontSize: "1rem",
-    borderRadius: "8px",
-    border: "1px solid #ccc",
+    padding: 10,
+    fontSize: 16,
+    border: "2px solid #ff7043",
+    borderRadius: 10,
   },
   button: {
-    backgroundColor: "#ff5722",
-    color: "#fff",
+    backgroundColor: "#ff3d00",
+    color: "white",
     border: "none",
-    borderRadius: "8px",
-    padding: "0.7rem 1.5rem",
-    fontSize: "1rem",
+    borderRadius: 10,
+    padding: "10px 20px",
     cursor: "pointer",
-    transition: "0.3s",
-  },
-  loading: {
-    color: "#ff5722",
     fontWeight: "bold",
   },
   grid: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
-    gap: "1.5rem",
-    marginTop: "2rem",
+    gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+    gap: 20,
+    marginTop: 30,
   },
   card: {
-    backgroundColor: "#fff",
-    borderRadius: "12px",
+    backgroundColor: "white",
+    padding: 15,
+    borderRadius: 15,
     boxShadow: "0 3px 8px rgba(0,0,0,0.1)",
-    padding: "1rem",
-    transition: "transform 0.2s ease-in-out",
+    transition: "0.3s",
   },
   image: {
     width: "100%",
-    height: "160px",
+    height: 160,
     objectFit: "cover",
-    borderRadius: "8px",
+    borderRadius: 10,
+    marginBottom: 10,
   },
-  cardTitle: {
+  itemTitle: {
+    fontSize: 16,
+    color: "#ff3d00",
+    fontWeight: "600",
+  },
+  price: {
     color: "#333",
-    fontSize: "1.1rem",
-    margin: "0.8rem 0 0.3rem",
-  },
-  source: {
-    color: "#888",
-    fontSize: "0.9rem",
+    marginTop: 5,
   },
   link: {
-    display: "inline-block",
-    marginTop: "0.6rem",
-    color: "#ff5722",
+    color: "#0277bd",
     textDecoration: "none",
     fontWeight: "bold",
   },
-  noResults: {
+  loading: {
+    color: "#ff3d00",
+    fontSize: 18,
+  },
+  error: {
+    color: "red",
+    marginTop: 10,
+  },
+  footer: {
+    marginTop: 40,
+    fontSize: 14,
     color: "#777",
-    marginTop: "1.5rem",
   },
 };
