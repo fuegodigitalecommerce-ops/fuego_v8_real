@@ -1,11 +1,16 @@
 {
   "version": 2,
   "builds": [
-    { "src": "package.json", "use": "@vercel/next" },
-    { "src": "api/trends.js", "use": "@vercel/node" }
+    { "src": "package.json", "use": "@vercel/next" }
   ],
   "routes": [
-    { "src": "/api/trends", "dest": "/api/trends.js" },
-    { "src": "/(.*)", "dest": "/" }
+    {
+      "src": "/api/(.*)",
+      "dest": "/api/$1"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/"
+    }
   ]
 }
